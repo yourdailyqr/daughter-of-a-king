@@ -239,6 +239,18 @@ html,body{width:100%;height:100%;background:#111;display:flex;justify-content:ce
   color: #8b6914;
   text-decoration: none;
 }
+#expired-reset-btn {
+  margin-top: 20px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 20px;
+  color: rgba(255,255,255,0.55);
+  font-family: 'Quicksand', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
 
 </style>
 </head>
@@ -384,29 +396,45 @@ const _origRender = render;
 </script>
 
 <div id="expired-screen">
-  <p id="expired-msg">Oops! Looks like you need to scan your QR code again for your daily message.</p>
+  <p id="expired-msg">Oops. It's been a little while. Looks like you need to rescan the QR code to see today's message.</p>
   <div id="expired-footer"><a href="https://www.yourdailyqr.com">www.yourdailyqr.com</a></div>
+  <button id="expired-reset-btn" onclick="localStorage.removeItem('dotk_scan_ts');location.reload();">Tap to reset &amp; preview</button>
 </div>
 
 <script>
 (function() {
   var KEY = 'dotk_scan_ts';
-  var now = Date.now();
-  var stored = localStorage.getItem(KEY);
   var SEVENTY_TWO_HOURS = 72 * 60 * 60 * 1000;
 
-  if (stored) {
-    var elapsed = now - parseInt(stored, 10);
-    if (elapsed >= SEVENTY_TWO_HOURS) {
-      // Expired — clear stamp and show expired screen
-      localStorage.removeItem(KEY);
-      document.getElementById('expired-screen').classList.add('show');
+  function checkGate() {
+    var now = Date.now();
+    var stored = localStorage.getItem(KEY);
+
+    if (stored) {
+      var elapsed = now - parseInt(stored, 10);
+      if (elapsed >= SEVENTY_TWO_HOURS) {
+        // Rule 3: 72+ hours since last view — clear stamp, show gate
+        localStorage.removeItem(KEY);
+        document.getElementById('expired-screen').classList.add('show');
+      } else {
+        // Rule 2: within 72 hours — reset stamp to now (rolling timer), show content
+        localStorage.setItem(KEY, String(now));
+      }
+    } else {
+      // Rule 1: no stamp — fresh scan, set stamp, show content
+      localStorage.setItem(KEY, String(now));
     }
-    // else: still within 24h, show content normally (no action needed)
-  } else {
-    // Fresh scan — stamp it and show content
-    localStorage.setItem(KEY, String(now));
   }
+
+  // Check on page load
+  checkGate();
+
+  // Re-check when tab becomes visible again (covers background tab scenario)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      checkGate();
+    }
+  });
 })();
 </script>
 
